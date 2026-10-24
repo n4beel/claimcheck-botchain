@@ -82,14 +82,17 @@ export default function CampaignPage({
   } = useWaitForTransactionReceipt({ hash });
 
   const settledHash = useRef<Hex | null>(null);
+  const publicClientRef = useRef(publicClient);
+  publicClientRef.current = publicClient;
 
   const fetchCampaign = useCallback(async () => {
-    if (!campaignId || !publicClient || !deployment?.address) return;
+    const client = publicClientRef.current;
+    if (!campaignId || !client || !deployment?.address) return;
     try {
       setLoading(true);
       setLoadError(null);
 
-      const loaded = await loadCampaign(publicClient, deployment.address, campaignId);
+      const loaded = await loadCampaign(client, deployment.address, campaignId);
       setCampaign(loaded.campaign);
       setTitle(loaded.title);
       setRows(loaded.rows);
@@ -99,7 +102,7 @@ export default function CampaignPage({
       const numWords = Math.ceil(loaded.rows.length / 256);
       const wordMap = new Map<number, bigint>();
       for (let w = 0; w < numWords; w++) {
-        const wordVal = await publicClient.readContract({
+        const wordVal = await client.readContract({
           address: deployment.address,
           abi: claimcheckAbi,
           functionName: "claimedWord",
@@ -113,7 +116,7 @@ export default function CampaignPage({
     } finally {
       setLoading(false);
     }
-  }, [campaignId, publicClient, deployment]);
+  }, [campaignId, deployment?.address]);
 
   useEffect(() => {
     fetchCampaign();

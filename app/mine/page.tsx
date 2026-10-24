@@ -51,9 +51,12 @@ export default function MyCampaignsPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [activeReclaimId, setActiveReclaimId] = useState<bigint | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const publicClientRef = useRef(publicClient);
+  publicClientRef.current = publicClient;
 
   const fetchCampaignDetails = useCallback(async () => {
-    if (!campaignIds || !publicClient || !deployment?.address) {
+    const client = publicClientRef.current;
+    if (!campaignIds || !client || !deployment?.address) {
       setCampaigns([]);
       setLoading(false);
       return;
@@ -64,7 +67,7 @@ export default function MyCampaignsPage() {
       const list: CreatorCampaignView[] = [];
 
       for (const id of campaignIds as bigint[]) {
-        const raw = await publicClient.readContract({
+        const raw = await client.readContract({
           address: deployment.address,
           abi: claimcheckAbi,
           functionName: "campaignOf",
@@ -94,7 +97,7 @@ export default function MyCampaignsPage() {
     } finally {
       setLoading(false);
     }
-  }, [campaignIds, publicClient, deployment]);
+  }, [campaignIds, deployment?.address]);
 
   useEffect(() => {
     fetchCampaignDetails();
