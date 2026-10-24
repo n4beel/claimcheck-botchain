@@ -1,54 +1,86 @@
 "use client";
 
-import { ButtonHTMLAttributes, CSSProperties, forwardRef } from "react";
+import { ButtonHTMLAttributes, forwardRef, ReactNode } from "react";
 
-type Variant = "primary" | "ghost" | "danger";
-type Size = "sm" | "md";
+export type ButtonVariant = "stepper" | "secondary" | "outline" | "danger" | "text";
+export type ButtonSize = "sm" | "md" | "lg";
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: Variant;
-  size?: Size;
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
   loading?: boolean;
+  arrow?: boolean;
+  leftIcon?: ReactNode;
 }
 
-const variantInlineStyles: Record<Variant, CSSProperties> = {
-  primary: { background: "var(--accent)", color: "var(--bg-base)" },
-  ghost: { background: "transparent", border: "1px solid var(--border-default)", color: "var(--text-secondary)" },
-  danger: { background: "transparent", border: "1px solid var(--danger)", color: "var(--danger)" },
-};
-
-const sizeStyles: Record<Size, string> = {
-  sm: "px-3 py-1.5 text-[11px]",
-  md: "px-5 py-2.5 text-[13px]",
-};
-
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ variant = "primary", size = "md", loading, disabled, children, className = "", style, ...props }, ref) => {
+  (
+    {
+      variant = "stepper",
+      size = "md",
+      loading = false,
+      arrow,
+      leftIcon,
+      disabled,
+      children,
+      className = "",
+      ...props
+    },
+    ref
+  ) => {
+    const isStepper = variant === "stepper";
+    const showArrow = arrow !== undefined ? arrow : isStepper;
+
+    const sizeClasses: Record<ButtonSize, string> = {
+      sm: "px-3.5 py-2 text-xs font-sans",
+      md: "px-5 py-3 text-sm font-sans",
+      lg: "px-6 py-4 text-base font-sans",
+    };
+
+    const variantClasses: Record<ButtonVariant, string> = {
+      stepper:
+        "w-full bg-[#0E4D64] hover:bg-[#083747] text-white border border-[#0E4D64] flex items-center justify-between font-medium tracking-wide transition-colors",
+      secondary:
+        "bg-[#EEF6EE] hover:bg-[#E4EFE4] text-[#10261B] border border-[#AFC8B4] inline-flex items-center justify-center gap-2 font-medium transition-colors",
+      outline:
+        "bg-transparent hover:bg-[#0E4D64]/10 text-[#0E4D64] border border-[#0E4D64] inline-flex items-center justify-center gap-2 font-medium transition-colors",
+      danger:
+        "bg-transparent hover:bg-amber-50 text-[#8A4B00] border border-[#8A4B00] inline-flex items-center justify-center gap-2 font-medium transition-colors",
+      text:
+        "bg-transparent hover:underline text-[#0E4D64] inline-flex items-center gap-1 font-medium p-0 border-0",
+    };
+
     return (
       <button
         ref={ref}
         disabled={disabled || loading}
         className={[
-          "inline-flex items-center justify-center gap-2",
-          "font-medium tracking-[0.02em] uppercase transition-opacity",
-          "cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed",
-          sizeStyles[size],
+          sizeClasses[size],
+          variantClasses[variant],
+          "disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer",
           className,
         ].join(" ")}
-        style={{ borderRadius: "2px", ...variantInlineStyles[variant], ...style }}
         {...props}
       >
-        {loading ? (
-          <>
-            <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-            {children}
-          </>
-        ) : (
-          children
+        <span className="inline-flex items-center gap-2">
+          {loading ? (
+            <span
+              className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin inline-block"
+              aria-hidden="true"
+            />
+          ) : (
+            leftIcon
+          )}
+          <span>{children}</span>
+        </span>
+        {showArrow && !loading && (
+          <span className="ml-4 font-mono text-base transition-transform group-hover:translate-x-1" aria-hidden="true">
+            →
+          </span>
         )}
       </button>
     );
-  },
+  }
 );
 
 Button.displayName = "Button";
