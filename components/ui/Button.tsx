@@ -2,7 +2,7 @@
 
 import { ButtonHTMLAttributes, forwardRef, ReactNode } from "react";
 
-export type ButtonVariant = "stepper" | "secondary" | "outline" | "danger" | "text";
+export type ButtonVariant = "stepper" | "secondary" | "outline" | "danger" | "text" | "ghost";
 export type ButtonSize = "sm" | "md" | "lg";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -48,6 +48,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         "bg-transparent hover:bg-amber-50 text-[#8A4B00] border border-[#8A4B00] inline-flex items-center justify-center gap-2 font-medium transition-colors",
       text:
         "bg-transparent hover:underline text-[#0E4D64] inline-flex items-center gap-1 font-medium p-0 border-0",
+      ghost:
+        "bg-transparent hover:bg-[#E4EFE4] text-[#10261B] border border-[#AFC8B4] inline-flex items-center justify-center gap-2 font-medium transition-colors",
     };
 
     return (
