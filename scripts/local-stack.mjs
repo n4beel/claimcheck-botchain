@@ -13,7 +13,7 @@
  *   npm run dev
  */
 
-import { spawn } from "node:child_process";
+import { spawn, execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import {
   concat,
@@ -32,6 +32,10 @@ import { mnemonicToAccount } from "viem/accounts";
 const PORT = 8704;
 const RPC = `http://127.0.0.1:${PORT}`;
 const CHAIN_ID = 968;
+
+try {
+  execSync(`fuser -k ${PORT}/tcp 2>/dev/null || true`);
+} catch {}
 
 const MNEMONIC = "test test test test test test test test test test test junk";
 
@@ -140,6 +144,7 @@ spawn("anvil", [
   "--chain-id", String(CHAIN_ID),
   "--accounts", "20",
   "--timestamp", String(initialTimestamp),
+  "--block-time", "1",
   "--silent",
 ], {
   detached: true,
@@ -341,3 +346,4 @@ Account Role Table:
   Account 3: ${accounts[3].address} (Recipient in Campaign 1: UNCLAIMED 8 BOT; sole recipient in Campaign 3: UNCLAIMED 50 BOT)
 =====================================================
 `);
+process.exit(0);

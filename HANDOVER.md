@@ -135,3 +135,16 @@ All findings from `docs/specs/FEEDBACK-claimcheck.md` addressed and verified:
 | `/mine` | Acc 0 (Creator) | View campaign portfolio and reclaim 40 BOT expired funds | PASS | 0 | 0 | Lists created campaigns 1–4; reclaim executed on-chain and remaining balance updated |
 | `/new` | Acc 0 (Creator) | Complete 3-step vertical stepper and fund new 2-recipient airdrop | PASS | 0 | 0 | List parsed, terms set, 3 BOT funded on-chain; done state rendered with QR and claim link |
 
+## Feedback round 2
+
+1. **Local-stack autonomous mining (`--block-time 1`):**
+   - Configured `anvil` in `scripts/local-stack.mjs` with `--block-time 1` to produce blocks autonomously on a 1-second cadence.
+   - Seeded states across all 4 scenarios (12-recipient campaign with accounts 1 & 2 claimed, expired 40 BOT campaign reclaimable by account 0, 1-recipient edge case, 150-recipient performance check) verified.
+   - Final chain timestamp matches wall clock (`diff: 1s`, within 120s limit).
+   - Confirmed autonomous block progression without manual mining:
+     ```bash
+     b1=$(cast block-number --rpc-url http://127.0.0.1:8704); sleep 3; b2=$(cast block-number --rpc-url http://127.0.0.1:8704); echo "$b1 -> $b2"
+     # Output: 34 -> 37
+     ```
+
+
