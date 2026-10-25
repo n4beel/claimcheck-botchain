@@ -83,6 +83,9 @@ contract Claimcheck {
   error NotCreator(uint256 id, address caller);
   error NothingToReclaim();
   error TransferFailed();
+  error Reentrancy();
+
+  uint256 private _lock = 1;
 
   // --- Functions ---
 
@@ -223,6 +226,11 @@ contract Claimcheck {
     uint96 amount,
     bytes32[] calldata proof
   ) external {
+    if (_lock != 1) {
+      revert Reentrancy();
+    }
+    _lock = 2;
+
     if (id == 0 || id > campaignCount) {
       revert NoSuchCampaign(id);
     }
@@ -267,11 +275,18 @@ contract Claimcheck {
     if (!ok) {
       revert TransferFailed();
     }
+
+    _lock = 1;
   }
 
   /// @notice Reclaim remaining unclaimed funds after campaign expires
   /// @param id Campaign ID
   function reclaim(uint256 id) external {
+    if (_lock != 1) {
+      revert Reentrancy();
+    }
+    _lock = 2;
+
     if (id == 0 || id > campaignCount) {
       revert NoSuchCampaign(id);
     }
@@ -299,6 +314,8 @@ contract Claimcheck {
     if (!ok) {
       revert TransferFailed();
     }
+
+    _lock = 1;
   }
 
   /// @notice View campaign details and status

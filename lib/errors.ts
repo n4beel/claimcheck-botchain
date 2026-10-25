@@ -166,6 +166,8 @@ export function describeError(err: unknown): string {
         return "Everything was claimed — nothing to return.";
       case "TransferFailed":
         return "The transfer to your wallet failed.";
+      case "Reentrancy":
+        return "Reentrant call detected.";
     }
   }
 

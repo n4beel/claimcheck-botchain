@@ -270,6 +270,11 @@ export const claimcheckAbi = [
     name: "TransferFailed",
     inputs: [],
   },
+  {
+    type: "error",
+    name: "Reentrancy",
+    inputs: [],
+  },
 ] as const;
 
 export const contractAbi = claimcheckAbi;

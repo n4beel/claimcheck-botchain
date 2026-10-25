@@ -33,11 +33,17 @@ contract ReentrantClaimant {
     claimcheck.claim(campaignId, claimIndex, claimAmount, claimProof);
   }
 
+  bytes public attackRevertData;
+
   receive() external payable {
     if (!attacked) {
       attacked = true;
-      // Reentrant call should fail with AlreadyClaimed
-      claimcheck.claim(campaignId, claimIndex, claimAmount, claimProof);
+      (bool ok, bytes memory data) = address(claimcheck).call(
+        abi.encodeWithSelector(claimcheck.claim.selector, campaignId, claimIndex, claimAmount, claimProof)
+      );
+      if (!ok) {
+        attackRevertData = data;
+      }
     }
   }
 }
@@ -546,13 +552,19 @@ contract ClaimcheckTest is Test {
     bytes32[] memory proof = _proofFor(recs, 0);
     attacker.setAttack(id, 0, 1 ether, proof);
 
-    // Attacker claims, its receive() tries to claim again. The reentrant call reverts AlreadyClaimed,
-    // so attacker's receive should fail or catch. Here receive doesn't catch, so whole tx reverts.
-    vm.expectRevert();
+    // Attacker claims, its receive() tries to reenter. The reentrant call fails with Reentrancy.
     attacker.executeClaim();
 
-    // Verify contract is still intact
-    assertEq(address(claimcheck).balance, 2 ether);
+    // Verify reentrant call reverted with Reentrancy custom error
+    assertEq(attacker.attackRevertData(), abi.encodeWithSelector(Claimcheck.Reentrancy.selector));
+
+    // Attacker received only 1 ether, not 2 ether
+    assertEq(address(attacker).balance, 1 ether);
+    assertEq(address(claimcheck).balance, 1 ether);
+
+    // Second claim attempts fail with AlreadyClaimed
+    vm.expectRevert(abi.encodeWithSelector(Claimcheck.AlreadyClaimed.selector, id, uint32(0)));
+    attacker.executeClaim();
   }
 
   function invariant_Solvency() public {

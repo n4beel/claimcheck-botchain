@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { formatEther, type Hex } from "viem";
+import { formatEther, parseEventLogs, type Hex } from "viem";
 import { useAccount, useChainId, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import Button from "@/components/ui/Button";
 import Panel from "@/components/ui/Panel";
@@ -107,15 +107,28 @@ export default function CreateCampaignForm() {
       setStage("confirmed");
 
       // Extract campaign ID from CampaignCreated event in receipt logs
-      for (const log of receipt.logs) {
-        try {
+      try {
+        const parsed = parseEventLogs({
+          abi: claimcheckAbi,
+          logs: receipt.logs,
+          eventName: "CampaignCreated",
+        });
+        if (parsed.length > 0 && parsed[0].args.id !== undefined) {
+          setCreatedCampaignId(BigInt(parsed[0].args.id));
+        } else {
+          for (const log of receipt.logs) {
+            if (log.topics[0] && log.topics[1]) {
+              setCreatedCampaignId(BigInt(log.topics[1]));
+              break;
+            }
+          }
+        }
+      } catch {
+        for (const log of receipt.logs) {
           if (log.topics[0] && log.topics[1]) {
-            const idVal = BigInt(log.topics[1]);
-            setCreatedCampaignId(idVal);
+            setCreatedCampaignId(BigInt(log.topics[1]));
             break;
           }
-        } catch {
-          // continue
         }
       }
     } else if (isReceiptError) {

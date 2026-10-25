@@ -66,6 +66,13 @@ describe("lib/errors", () => {
 
     expect(
       describeError({
+        errorName: "Reentrancy",
+        args: [],
+      })
+    ).toBe("Reentrant call detected.");
+
+    expect(
+      describeError({
         errorName: "NotExpired",
         args: [1n, 1760000000n],
       })

@@ -202,9 +202,10 @@ export default function CampaignPage({
   const currentStep = useMemo(() => {
     if (!campaign) return 1;
     if (!connectedAccount) return 2;
+    if (isExpired) return 3;
     if (userEntry) return 3;
     return 2;
-  }, [campaign, connectedAccount, userEntry]);
+  }, [campaign, connectedAccount, isExpired, userEntry]);
 
   // Stepper definition
   const steps: StepDefinition[] = [
@@ -213,7 +214,7 @@ export default function CampaignPage({
       title: "Campaign Allocation",
       summary: campaign ? (
         <span>
-          {title || `Campaign #${campaignId}`} · {formatEther(campaign.funded)} BOT ({percentClaimed}% claimed)
+          {title || `Campaign #${campaignId}`} · {formatEther(campaign.funded)} BOT ({isExpired ? "Closed" : `${percentClaimed}% claimed`})
         </span>
       ) : undefined,
       content: campaign ? (
@@ -281,6 +282,8 @@ export default function CampaignPage({
           <span className="text-[#1E6B38] font-bold">
             Listed: {formatEther(userEntry.amount)} BOT
           </span>
+        ) : connectedAccount && campaign && connectedAccount.toLowerCase() === campaign.creator.toLowerCase() ? (
+          <span className="text-[#0E4D64] font-bold">Campaign Creator</span>
         ) : (
           <span className="text-[#8A4B00]">Not on distribution list</span>
         )

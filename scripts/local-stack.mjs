@@ -130,8 +130,18 @@ function encodeList(rows) {
   return concat(parts);
 }
 
-console.log(`Starting anvil on port ${PORT}...`);
-spawn("anvil", ["--port", String(PORT), "--chain-id", String(CHAIN_ID), "--accounts", "20", "--silent"], {
+const totalWarp = 3605;
+const realNow = Math.floor(Date.now() / 1000);
+const initialTimestamp = realNow - totalWarp;
+
+console.log(`Starting anvil on port ${PORT} with initial timestamp ${initialTimestamp} (wall-clock: ${realNow})...`);
+spawn("anvil", [
+  "--port", String(PORT),
+  "--chain-id", String(CHAIN_ID),
+  "--accounts", "20",
+  "--timestamp", String(initialTimestamp),
+  "--silent",
+], {
   detached: true,
   stdio: "ignore",
 }).unref();
@@ -299,18 +309,35 @@ const envLocal = `NEXT_PUBLIC_CHAIN_ID=968
 NEXT_PUBLIC_RPC_URL_968=${RPC}
 NEXT_PUBLIC_CONTRACT_968=${contractAddress}
 NEXT_PUBLIC_DEPLOY_BLOCK_968=${deployBlock}
+NEXT_PUBLIC_BOTCHAIN_NETWORK=testnet
+NEXT_PUBLIC_BOHR_RPC=${RPC}
 `;
 writeFileSync(".env.local", envLocal);
 console.log("Wrote .env.local with deployed contract and block number.");
+
+const latestBlock = await pub.getBlock({ blockTag: "latest" });
+const currentRealTime = Math.floor(Date.now() / 1000);
+const diff = Math.abs(Number(latestBlock.timestamp) - currentRealTime);
+console.log(`Chain timestamp: ${latestBlock.timestamp}, wall-clock: ${currentRealTime}, diff: ${diff}s`);
+if (diff > 120) {
+  throw new Error(`Chain timestamp skewed by ${diff}s (> 120s limit)`);
+}
 
 console.log(`
 =====================================================
 Claimcheck local stack ready:
   RPC:       ${RPC} (Chain ID: ${CHAIN_ID})
   Contract:  ${contractAddress}
+  Timestamp: ${latestBlock.timestamp} (diff: ${diff}s from wall clock)
   Seeded:    Campaign 1: 12 recipients (30 days, accounts 1 & 2 claimed)
              Campaign 2: Expired 40 BOT (reclaimable by account 0)
              Campaign 3: 1 recipient edge case (account 3)
              Campaign 4: 150 recipients table performance check
+
+Account Role Table:
+  Account 0: ${accounts[0].address} (Creator of all campaigns, can reclaim Campaign 2)
+  Account 1: ${accounts[1].address} (Recipient in Campaign 1: ALREADY CLAIMED 4 BOT; in Campaign 2: expired)
+  Account 2: ${accounts[2].address} (Recipient in Campaign 1: ALREADY CLAIMED 6 BOT; in Campaign 2: expired)
+  Account 3: ${accounts[3].address} (Recipient in Campaign 1: UNCLAIMED 8 BOT; sole recipient in Campaign 3: UNCLAIMED 50 BOT)
 =====================================================
 `);

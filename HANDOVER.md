@@ -79,3 +79,59 @@ python3 scripts/check-distinct.py claimcheck
 - `--text-primary` (`#10261B`) on `--bg-base` (`#DCEBDC`): **12.4:1** (Passes AAA)
 - `--text-muted` (`#46604F`) on `--bg-base` (`#DCEBDC`): **4.9:1** (Passes AA Normal, AAA Large)
 - `--warn` (`#8A4B00`) on `--bg-surface` (`#EEF6EE`): **6.2:1** (Passes AAA Large, AA Normal)
+
+## Feedback round 1
+
+All findings from `docs/specs/FEEDBACK-claimcheck.md` addressed and verified:
+
+1. **Decode `CampaignCreated` by name from receipt logs (`components/claimcheck/CreateCampaignForm.tsx`):** FIXED.
+   - Used `parseEventLogs` with `claimcheckAbi` and `eventName: "CampaignCreated"` to safely extract the campaign ID by event signature rather than relying on raw positional topic offsets, with fallback protection.
+
+2. **Local stack points app at seeded chain (`scripts/local-stack.mjs`):** FIXED.
+   - Added `NEXT_PUBLIC_BOTCHAIN_NETWORK=testnet` and `NEXT_PUBLIC_BOHR_RPC=http://127.0.0.1:8704` to `.env.local` written by `scripts/local-stack.mjs`.
+   - Verified that after running `node scripts/local-stack.mjs && npm run dev`, seeded campaigns immediately appear in the browser without any manual env edits.
+
+3. **Seeded chain time aligned to wall-clock time (`scripts/local-stack.mjs`):** FIXED.
+   - Calculated total warp across seeding phases (`3605` seconds for Scenario 2 expiry).
+   - Started anvil with `--timestamp <realNow - 3605>`, warping strictly forward.
+   - Asserted `diff <= 120s` between latest block timestamp and wall clock time (`diff = 0s`), and printed the alignment confirmation.
+
+4. **Added reentrancy guard (`contracts/src/Claimcheck.sol`):** FIXED.
+   - Added `error Reentrancy();` and `uint256 private _lock = 1;` to `Claimcheck.sol`.
+   - Guarded both `claim` and `reclaim` against reentrant calls with custom error `Reentrancy()`.
+   - Exported `Reentrancy` in `lib/botchain/abi.ts` and mapped to `"Reentrant call detected."` in `lib/errors.ts`.
+   - Verified with unit tests and `test_ReentrantClaimant_CannotDoubleClaim` in `contracts/test/Claimcheck.t.sol`.
+
+5. **Real browser walkthrough (`docs/specs/tools/mock-wallet.js`):** FIXED.
+   - Walkthrough conducted on running local stack (`http://127.0.0.1:8704`) and dev server (`http://localhost:3004`) with Google Chrome headless and `mock-wallet.js`.
+   - Verified responsive layouts across 360 px, 720 px, and 1280 px viewports.
+   - Tested route `/` as Observer (two doors, operational limits, navigation to `/c/1`).
+   - Tested route `/c/1` as Observer (verified allocation and public table with claimed ticks).
+   - Tested route `/c/1` as Acc 3 (eligible recipient: verified 8 BOT allocation, executed on-chain claim, cleared state rendered).
+   - Tested route `/c/1` as Acc 1 (prior claimant: verified already claimed state).
+   - Tested route `/c/1` as Acc 9 (unlisted visitor: verified address check rejection).
+   - Tested route `/c/2` as Acc 0 (creator on expired campaign: verified closed state with direct link to `/mine`).
+   - Tested route `/c/3` as Acc 3 (n=1 edge case: verified 50 BOT allocation on single-leaf tree).
+   - Tested route `/c/4` as Observer (150-recipient table: verified smooth rendering and address search filter).
+   - Tested route `/c/999` as Observer (non-existent campaign: verified clean 404 error panel).
+   - Tested route `/mine` as Acc 0 (creator portfolio: reclaimed 40 BOT on-chain from expired Campaign #2).
+   - Tested route `/new` as Acc 0 (published new 2-recipient airdrop funded with 3 BOT on-chain; verified done state with QR code and claim link).
+   - Confirmed 0 console errors and 0 hydration warnings across all 12 checks.
+
+### Browser Walkthrough Results
+
+| Route | Role | Action | Status | Console Errors | Hydration Warnings | Notes |
+|---|---|---|---|---|---|---|
+| `/` (360px, 720px, 1280px) | Visitor | Viewport responsiveness checks | PASS | 0 | 0 | No horizontal overflow across all breakpoints, doors and headers responsive |
+| `/` | Observer (No Wallet) | Browse two doors and lookup Campaign #1 via Door 2 form | PASS | 0 | 0 | Displays Door 1, Door 2, operational limits; navigated cleanly to `/c/1` |
+| `/c/1` | Observer (No Wallet) | Inspect Campaign #1 allocation and public distribution register | PASS | 0 | 0 | Shows 156 BOT funded, 12 recipients, gate prompt, and public table with claimed ticks |
+| `/c/1` | Acc 3 (Eligible Recipient) | Verify inclusion (8 BOT) and submit on-chain claim | PASS | 0 | 0 | Merkle proof submitted and confirmed; step 3 cleared state rendered with receipt link |
+| `/c/1` | Acc 1 (Prior Claimant) | Verify already-claimed status and disabled claim action | PASS | 0 | 0 | Displays "This share has already been claimed" with allocation details |
+| `/c/1` | Acc 9 (Unlisted Visitor) | Verify ineligible address detection | PASS | 0 | 0 | Displays "This address isn't on the list" with address guidance |
+| `/c/2` | Acc 0 (Creator) | Inspect expired campaign with reclaim prompt | PASS | 0 | 0 | Shows "Closed" badge, expiry date, and direct link to `/mine` for creator reclaim |
+| `/c/3` | Acc 3 (Sole Recipient) | Inspect n=1 single recipient campaign | PASS | 0 | 0 | Successfully verified allocation for 50 BOT on single-leaf Merkle root |
+| `/c/4` | Observer (No Wallet) | Inspect 150-recipient campaign table and test search filter | PASS | 0 | 0 | 150 rows render smoothly; address search filters table accurately |
+| `/c/999` | Observer (No Wallet) | Inspect non-existent campaign reference | PASS | 0 | 0 | Renders clean "Campaign Not Found" panel with retry option |
+| `/mine` | Acc 0 (Creator) | View campaign portfolio and reclaim 40 BOT expired funds | PASS | 0 | 0 | Lists created campaigns 1–4; reclaim executed on-chain and remaining balance updated |
+| `/new` | Acc 0 (Creator) | Complete 3-step vertical stepper and fund new 2-recipient airdrop | PASS | 0 | 0 | List parsed, terms set, 3 BOT funded on-chain; done state rendered with QR and claim link |
+
