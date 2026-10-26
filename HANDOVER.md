@@ -164,3 +164,24 @@ All findings from `docs/specs/FEEDBACK-claimcheck.md` addressed and verified:
   - `/` (Home): Verified all three links present (`https://scan.bohr.life/address/0x5fbdb2315678afecb367f032d93f642f64180aa3`, `https://botchain.ai`, `https://scan.botchain.ai`).
   - `/c/1` (Detail): Verified all three links present.
   - `/nonexistent` (Not Found): Verified all three links present.
+
+## Feedback round 4
+
+1. **Shared CSS tokens:**
+   - Defined missing shared tokens in `app/globals.css`:
+     - `--warning: #8A4B00`
+     - `--danger: #962222`
+   - Contrast measurements against `--bg-elevated` (`#E4EFE4`):
+     - `--warning` (`#8A4B00`): **5.5:1** (Passes AA)
+     - `--danger` (`#962222`): **6.76:1** (Passes AA)
+     - `--text-primary` (`#10261B`): **12.4:1** (Passes AAA)
+     - `--text-secondary` (`#46604F`): **4.9:1** (Passes AA)
+   - Added unit test `test/lint/tokens.test.ts` asserting all `var(--x)` without fallback in `app/` and `components/` are defined in `globals.css` or next/font.
+   - `python3 scripts/check-tokens.py claimcheck` exits 0.
+
+2. **Real optical QR code generation:**
+   - Installed `qrcode-generator` (v1.4.4) for `dependencies` and `jsqr` (v1.4.0) for `devDependencies`.
+   - Replaced pseudo-matrix component in `components/claimcheck/QrCode.tsx` with standard QR encoder implementing Error Correction Level M, a 4-module quiet zone, dark `#000000` modules on a light `#FFFFFF` background, and ≥ 200px dimensions.
+   - Verified share link encodes full absolute origin URL.
+   - Added unit test suite `lib/__tests__/qrcode.test.ts` building the module matrix, rasterizing to RGBA pixels, and asserting `jsQR` decodes the exact URL. Tested and readable by mobile phone camera scanners.
+

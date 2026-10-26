@@ -398,7 +398,7 @@ export default function CreateCampaignForm() {
               </div>
 
               <div className="flex flex-col sm:flex-row items-center gap-6 p-6 bg-white border border-[#AFC8B4]">
-                <QrCode value={claimUrl} size={150} />
+                <QrCode value={claimUrl} size={200} />
                 <div className="flex-1 space-y-3 w-full">
                   <label className="text-xs font-sans uppercase tracking-wider text-[#46604F]">
                     Shareable Claim Link

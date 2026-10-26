@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import qrcode from "qrcode-generator";
 
 interface QrCodeProps {
   value: string;
@@ -9,93 +10,66 @@ interface QrCodeProps {
 }
 
 /**
- * Compact, zero-dependency inline SVG QR code generator.
- * Encodes text into a deterministic 29x29 matrix (Version 3 QR format).
+ * Real QR code component using qrcode-generator.
+ *
+ * Encodes value with Error Correction Level M and a 4-module quiet zone.
+ * Renders high-contrast black modules (#000000) on white background (#FFFFFF)
+ * at a minimum dimension of 200px for optical scanner reliability.
  */
-export default function QrCode({ value, size = 180, className = "" }: QrCodeProps) {
-  const matrix = useMemo(() => {
-    const N = 29;
-    const grid: boolean[][] = Array.from({ length: N }, () => Array(N).fill(false));
-    const reserved: boolean[][] = Array.from({ length: N }, () => Array(N).fill(false));
-
-    function addFinder(r: number, c: number) {
-      for (let i = -1; i <= 7; i++) {
-        for (let j = -1; j <= 7; j++) {
-          const row = r + i;
-          const col = c + j;
-          if (row >= 0 && row < N && col >= 0 && col < N) {
-            reserved[row][col] = true;
-            if (i >= 0 && i <= 6 && j >= 0 && j <= 6) {
-              const border = i === 0 || i === 6 || j === 0 || j === 6;
-              const center = i >= 2 && i <= 4 && j >= 2 && j <= 4;
-              grid[row][col] = border || center;
-            } else {
-              grid[row][col] = false;
-            }
-          }
-        }
-      }
+export default function QrCode({ value, size = 200, className = "" }: QrCodeProps) {
+  const { moduleCount, isDark } = useMemo(() => {
+    if (!value) {
+      return { moduleCount: 0, isDark: () => false };
     }
-
-    addFinder(0, 0);
-    addFinder(0, N - 7);
-    addFinder(N - 7, 0);
-
-    // Timing patterns
-    for (let i = 8; i < N - 8; i++) {
-      grid[6][i] = i % 2 === 0;
-      grid[i][6] = i % 2 === 0;
-      reserved[6][i] = true;
-      reserved[i][6] = true;
-    }
-
-    // Hash data into bits
-    let hash = 2166136261;
-    for (let i = 0; i < value.length; i++) {
-      hash ^= value.charCodeAt(i);
-      hash = Math.imul(hash, 16777619);
-    }
-
-    // Fill data areas
-    let seed = hash >>> 0;
-    for (let r = 0; r < N; r++) {
-      for (let c = 0; c < N; c++) {
-        if (!reserved[r][c]) {
-          seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-          grid[r][c] = (seed & 1) === 1;
-        }
-      }
-    }
-
-    return grid;
+    // Type 0 = auto-detect version that fits data
+    const qr = qrcode(0, "M");
+    qr.addData(value);
+    qr.make();
+    return {
+      moduleCount: qr.getModuleCount(),
+      isDark: (r: number, c: number) => qr.isDark(r, c),
+    };
   }, [value]);
 
-  const N = matrix.length;
-  const cellSize = 100 / N;
+  if (!value || moduleCount === 0) {
+    return null;
+  }
+
+  // 4-module quiet zone per specification
+  const quietZone = 4;
+  const totalModules = moduleCount + quietZone * 2;
+  const renderedSize = Math.max(200, size);
+
+  // Build rects for dark modules
+  const rects: { x: number; y: number }[] = [];
+  for (let r = 0; r < moduleCount; r++) {
+    for (let c = 0; c < moduleCount; c++) {
+      if (isDark(r, c)) {
+        rects.push({ x: c + quietZone, y: r + quietZone });
+      }
+    }
+  }
 
   return (
     <svg
-      viewBox="0 0 100 100"
-      width={size}
-      height={size}
-      className={["bg-white p-2 border border-[#AFC8B4]", className].join(" ")}
+      viewBox={`0 0 ${totalModules} ${totalModules}`}
+      width={renderedSize}
+      height={renderedSize}
+      className={["bg-white border border-[#AFC8B4] inline-block", className].join(" ")}
       role="img"
       aria-label={`QR code for ${value}`}
     >
-      {matrix.map((row, r) =>
-        row.map((dark, c) =>
-          dark ? (
-            <rect
-              key={`${r}-${c}`}
-              x={c * cellSize}
-              y={r * cellSize}
-              width={cellSize + 0.05}
-              height={cellSize + 0.05}
-              fill="#0E4D64"
-            />
-          ) : null
-        )
-      )}
+      <rect width={totalModules} height={totalModules} fill="#FFFFFF" />
+      {rects.map((pt) => (
+        <rect
+          key={`${pt.y}-${pt.x}`}
+          x={pt.x}
+          y={pt.y}
+          width={1}
+          height={1}
+          fill="#000000"
+        />
+      ))}
     </svg>
   );
 }
